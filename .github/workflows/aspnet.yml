@@ -52,7 +52,7 @@ jobs:
       with:
         scope: resourcegroup 
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-        resourceGroupName: Labs
+        resourceGroupName: testewebapp
         template: WebApp/createappservice.json
         deploymentMode: Incremental
   deploy:
