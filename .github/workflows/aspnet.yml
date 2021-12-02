@@ -1,6 +1,8 @@
-name: Demo WebApp
+name: WebApp
 on:
   pull_request:
+    branches: [ master ]
+  push:
     branches: [ master ]
 env:
   #AZURE_WEBAPP_NAME: webAppAction-wes    # set this to your application's name
