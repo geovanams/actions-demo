@@ -53,7 +53,7 @@ jobs:
         scope: resourcegroup 
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
         resourceGroupName: testewebapp
-        template: Infraestrutura/createappservice.json
+        template: Infraestrutura/deploy.json
         deploymentMode: Incremental
   deploy:
     needs: deploy-IaC
