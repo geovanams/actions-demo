@@ -1,45 +1,75 @@
-name: .NET
-
+name: Demo WebApp
 on:
-  push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
-
 env:
-  AZURE_WEBAPP_NAME: tdcsamplewebapp # set this to your application's name
-  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '5.0.403'           # set this to the dot net version to use
-  
+  #AZURE_WEBAPP_NAME: webAppAction-wes    # set this to your application's name
+  AZURE_WEBAPP: '.'
 jobs:
   build:
-
+    name: Build
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
-    - name: Restore dependencies
+    - name: Install dependencies
       run: dotnet restore
-    - name: Build and publish
-      run: |
-        dotnet build --configuration Release --no-restore
-        dotnet test --no-build --verbosity normal
-        dotnet publish -o '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output'
-    
+    - name: Build 
+      run: dotnet build --configuration Release --no-restore
+    - name: dotnet publish
+      run: dotnet publish -c Release -o ${{ env.AZURE_WEBAPP }}/output
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
         name: artifact
         path: output/
-
-    # Deploy to Azure Web apps
-    - name: 'Run Azure webapp deploy action using publish profile credentials'
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: iac
+        path: WebApp/
+  deploy-IaC:
+    needs: build
+    name: Deploy Infra
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: iac
+        path: '${{ github.workspace }}//WebApp'
+    - name: Azure Login
+      uses: Azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Deploy Azure Resource Manager (ARM) Template
+      uses: Azure/arm-deploy@v1
+      with:
+        scope: resourcegroup 
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: Labs
+        template: WebApp/createappservice.json
+        deploymentMode: Incremental
+  deploy:
+    needs: deploy-IaC
+    name: Deploy Web App
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: artifact
+        path: ${{ env.AZURE_WEBAPP }}/output
+    - name: Azure Login
+      uses: Azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        enable-AzPSSession: true
+    - name: 'Deploy to Azure WebApp'
       uses: azure/webapps-deploy@v2
-      with: 
-        app-name: ${{ env.AZURE_WEBAPP_NAME }} # Replace with your app name
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE  }} # Define secret variable in repository settings as per action documentation
-        package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/output'
+      with:
+        app-name: GithubActionsDemonio
+        package: ${{ env.AZURE_WEBAPP }}/output
